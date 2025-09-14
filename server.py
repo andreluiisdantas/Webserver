@@ -7,7 +7,7 @@ class MyHandle(SimpleHTTPRequestHandler):
     def list_directory(self, path):
         try:
             # Tenta abrir o arquivo 'index.html' no diretório solicitado
-            f = open(os.path.join(path, 'index.html'), 'r')
+            f = open(os.path.join(path, 'index.html'), 'r', encoding="utf-8")
 
             self.send_response(200)  # Envia uma resposta HTTP 200 (OK)
             self.send_header("Content-type", "text/html")  # Define o tipo de conteúdo como HTML
@@ -26,7 +26,7 @@ class MyHandle(SimpleHTTPRequestHandler):
         if self.path == "/login":
             try:
                 # Tenta abrir o arquivo 'login.html'
-                with open(os.path.join(os.getcwd(), "login.html"), 'r') as login:
+                with open(os.path.join(os.getcwd(), "login.html"), 'r', encoding="utf-8") as login:
                     content = login.read()
                 self.send_response(200)  # Envia uma resposta HTTP 200 (OK)
                 self.send_header("Content-type", "text/html")  # Define o tipo de conteúdo como HTML
@@ -38,7 +38,7 @@ class MyHandle(SimpleHTTPRequestHandler):
         elif self.path == "/cadastro":
             try:
                 # Tenta abrir o arquivo 'cadastro.html'
-                with open(os.path.join(os.getcwd(), "cadastro.html"), 'r') as cadastro:
+                with open(os.path.join(os.getcwd(), "cadastro.html"), 'r', encoding="utf-8") as cadastro:
                     content = cadastro.read()
                 self.send_response(200)  # Envia uma resposta HTTP 200 (OK)
                 self.send_header("Content-type", "text/html")  # Define o tipo de conteúdo como HTML
@@ -50,7 +50,7 @@ class MyHandle(SimpleHTTPRequestHandler):
         elif self.path == "/filmes":
             try:
                 # Tenta abrir o arquivo 'filmes.html'
-                with open(os.path.join(os.getcwd(), "filmes.html"), 'r') as filmes:
+                with open(os.path.join(os.getcwd(), "filmes.html"), 'r', encoding="utf-8") as filmes:
                     content = filmes.read()
                 self.send_response(200)  # Envia uma resposta HTTP 200 (OK)
                 self.send_header("Content-type", "text/html")  # Define o tipo de conteúdo como HTML
