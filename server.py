@@ -47,10 +47,10 @@ class MyHandle(SimpleHTTPRequestHandler):
             except FileNotFoundError:
                 # Se o arquivo não for encontrado, envia erro 404
                 self.send_error(404, "File Not Found")
-        elif self.path == "/filmes":
+        elif self.path == "/listar_filmes":
             try:
                 # Tenta abrir o arquivo 'filmes.html'
-                with open(os.path.join(os.getcwd(), "filmes.html"), 'r', encoding="utf-8") as filmes:
+                with open(os.path.join(os.getcwd(), "listar_filmes.html"), 'r', encoding="utf-8") as filmes:
                     content = filmes.read()
                 self.send_response(200)  # Envia uma resposta HTTP 200 (OK)
                 self.send_header("Content-type", "text/html")  # Define o tipo de conteúdo como HTML
