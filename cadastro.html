@@ -4,8 +4,58 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cadastro Filme</title>
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <h1>Cadastro de Filmes</h1>
+    <div class="telaCadastro">
+        <img src="./assets/Logo_Cinema.svg" class="logo">
+        <article class="formularioCadastro">
+            <form>
+                <h1>Cadastro de filmes</h1>
+
+                <div class="camposFormulario">
+                    <div class="alinharInput">
+                        <label>Nome do filme</label>
+                        <input type="text" placeholder="Digite o filme"/>
+                    </div>
+                    <div class="alinharInput">
+                        <label>Atores</label>
+                        <input type="text" placeholder="Digite os autores"/>
+                    </div>
+                </div>
+
+                <div class="camposFormulario">
+                    <div class="alinharInput">
+                        <label>Diretor</label>
+                        <input type="text" placeholder="Digite o diretor"/>
+                    </div>
+                    <div class="alinharInput">
+                        <label>Ano</label>
+                        <input type="number" placeholder="Digite o ano de lançamento"/>
+                    </div>
+                </div>
+
+                <div class="camposFormulario">
+                    <div class="alinharInput">
+                        <label>Gênero</label>
+                        <input type="text" placeholder="Digite o gênero"/>
+                    </div>
+                    <div class="alinharInput">
+                        <label>Produtora</label>
+                        <input type="text" placeholder="Digite a Produtora"/>
+                    </div>
+                </div>
+
+                <div class="camposFormularioTextare">
+                    <div class="alinharInput">
+                        <label>Sinopse</label>
+                        <textarea class="sinopse" placeholder="Digite a sinopse"></textarea>
+                    </div>
+                </div>
+
+                <button>Cadastrar</button>
+            </form>
+        </article>
+    </div>
 </body>
 </html>
