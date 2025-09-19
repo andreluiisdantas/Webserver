@@ -15,19 +15,19 @@
         <article class="formularioLogin">
             <h2>Login</h2>
             <p>Preencha os campos abaixo com o seus dados de acesso.</p>
-            <form>
+            <form method="post" action="/send_login">
                 <div class="formItem">
                     <label>Usuario</label>
-                    <input type="email" placeholder="Digite seu e-mail"/>
+                    <input type="email" name="usuario" placeholder="Digite seu e-mail"/>
                 </div>
 
                 <div class="formItem">
                     <label>Senha</label>
-                    <input type="password" placeholder="Digite sua senha"/>
+                    <input type="password" name="senha" placeholder="Digite sua senha"/>
                 </div>
                 
                 <div class="formItem">
-                    <button>Entrar</button>
+                    <button type="submit">Entrar</button>
                 </div>
             </form>
             <a href="#">Esqueceu a senha?</a>
