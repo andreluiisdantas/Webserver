@@ -10,50 +10,50 @@
     <div class="telaCadastro">
         <img src="./assets/Logo_Cinema.svg" class="logo">
         <article class="formularioCadastro">
-            <form>
+            <form method="post" action="/send_cadastro">
                 <h1>Cadastro de filmes</h1>
 
                 <div class="camposFormulario">
                     <div class="alinharInput">
                         <label>Nome do filme</label>
-                        <input type="text" placeholder="Digite o filme"/>
+                        <input type="text" name="nome_filme" placeholder="Digite o filme"/>
                     </div>
                     <div class="alinharInput">
                         <label>Atores</label>
-                        <input type="text" placeholder="Digite os autores"/>
+                        <input type="text" name="atores" placeholder="Digite os autores"/>
                     </div>
                 </div>
 
                 <div class="camposFormulario">
                     <div class="alinharInput">
                         <label>Diretor</label>
-                        <input type="text" placeholder="Digite o diretor"/>
+                        <input type="text" name="diretor" placeholder="Digite o diretor"/>
                     </div>
                     <div class="alinharInput">
                         <label>Ano</label>
-                        <input type="number" placeholder="Digite o ano de lançamento"/>
+                        <input type="number" name="ano" placeholder="Digite o ano de lançamento"/>
                     </div>
                 </div>
 
                 <div class="camposFormulario">
                     <div class="alinharInput">
                         <label>Gênero</label>
-                        <input type="text" placeholder="Digite o gênero"/>
+                        <input type="text" name="genero" placeholder="Digite o gênero"/>
                     </div>
                     <div class="alinharInput">
                         <label>Produtora</label>
-                        <input type="text" placeholder="Digite a Produtora"/>
+                        <input type="text" name="produtora" placeholder="Digite a Produtora"/>
                     </div>
                 </div>
 
                 <div class="camposFormularioTextare">
                     <div class="alinharInput">
                         <label>Sinopse</label>
-                        <textarea class="sinopse" placeholder="Digite a sinopse"></textarea>
+                        <textarea class="sinopse" name="sinopse" placeholder="Digite a sinopse"></textarea>
                     </div>
                 </div>
 
-                <button>Cadastrar</button>
+                <button type="submit">Cadastrar</button>
             </form>
         </article>
     </div>
