@@ -18,7 +18,7 @@ class MyHandle(SimpleHTTPRequestHandler):
             pass
         return super().list_directory(path)
 
-    # Lida com requisições GET (rotas /login, /cadastro, /listar_filmes, etc.)
+    # Lida com requisições GET
     def do_GET(self):
         if self.path == "/login":
             try:
@@ -65,7 +65,6 @@ class MyHandle(SimpleHTTPRequestHandler):
                             </div>
                         """
                 
-                # CORREÇÃO: substitui marcador {{filmes}} no HTML em vez de string vazia
                 final_content = content_template.replace("{{filmes}}", filmes_html)
 
                 self.send_response(200)
