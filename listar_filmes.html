@@ -1,13 +1,170 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Filmes</title>
+    <title>Filmes Cadastrados</title>
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <a href="cadastro.html">Cadastrar Filmes</a>
-    <h1>Lista filmes</h1>
-    {{filmes}}
+    <div class="telaFilmes">
+        <div class="headerFilmes">
+            <a href="/index.html" class="nav-button">Página Inicial</a>
+            <h1>Lista de Filmes</h1>
+            <a href="/cadastro.html" class="nav-button">Cadastrar Novo Filme</a>
+        </div>
+        <div id="filmes-container">
+            </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', fetchMovies);
+
+        const moviesContainer = document.getElementById('filmes-container');
+
+        // Função para buscar e exibir os filmes
+        async function fetchMovies() {
+            try {
+                const response = await fetch('/api/filmes');
+                if (!response.ok) throw new Error('Erro ao buscar filmes.');
+                const movies = await response.json();
+                
+                moviesContainer.innerHTML = ''; // Limpa o container antes de adicionar os novos cards
+
+                if (movies.length === 0) {
+                    moviesContainer.innerHTML = '<p class="nenhum-filme">Nenhum filme cadastrado ainda.</p>';
+                    return;
+                }
+
+                movies.forEach(movie => {
+                    const card = document.createElement('div');
+                    card.className = 'filme-card';
+                    card.setAttribute('data-id', movie.id);
+                    card.innerHTML = `
+                        <div class="filme-display">
+                            <h2>${movie.nome || 'Não informado'}</h2>
+                            <p><strong>Atores:</strong> ${movie.atores || 'Não informado'}</p>
+                            <p><strong>Diretor:</strong> ${movie.diretor || 'Não informado'}</p>
+                            <p><strong>Ano:</strong> ${movie.ano || 'Não informado'}</p>
+                            <p><strong>Gênero:</strong> ${movie.genero || 'Não informado'}</p>
+                            <p><strong>Produtora:</strong> ${movie.produtora || 'Não informado'}</p>
+                            <p class="sinopse"><strong>Sinopse:</strong> ${movie.sinopse || 'Não informado'}</p>
+                            <div class="filme-actions">
+                                <button class="btn-edit">Editar</button>
+                                <button class="btn-delete">Deletar</button>
+                            </div>
+                        </div>
+                    `;
+                    moviesContainer.appendChild(card);
+                });
+            } catch (error) {
+                moviesContainer.innerHTML = `<p style="color: red;">${error.message}</p>`;
+                console.error(error);
+            }
+        }
+        
+        // Delegação de eventos para os botões de editar e deletar
+        moviesContainer.addEventListener('click', async (e) => {
+            const card = e.target.closest('.filme-card');
+            if (!card) return;
+            const id = card.getAttribute('data-id');
+
+            // Ação de Deletar
+            if (e.target.classList.contains('btn-delete')) {
+                if (confirm('Tem certeza que deseja deletar este filme?')) {
+                    try {
+                        const response = await fetch(`/api/filmes/${id}`, { method: 'DELETE' });
+                        if (response.ok) {
+                            fetchMovies(); // Recarrega a lista
+                        } else {
+                            alert('Falha ao deletar o filme.');
+                        }
+                    } catch (error) {
+                        console.error('Erro ao deletar:', error);
+                        alert('Ocorreu um erro na requisição.');
+                    }
+                }
+            }
+            
+            // Ação de Editar
+            if (e.target.classList.contains('btn-edit')) {
+                const displayDiv = card.querySelector('.filme-display');
+                if (displayDiv) {
+                    const moviesResponse = await fetch('/api/filmes');
+                    const movies = await moviesResponse.json();
+                    const movie = movies.find(m => m.id == id);
+                    
+                    if (movie) {
+                        displayDiv.style.display = 'none';
+                        const form = createEditForm(movie);
+                        card.appendChild(form);
+                    }
+                }
+            }
+
+            // Ação de Salvar Edição
+            if (e.target.classList.contains('btn-save')) {
+                e.preventDefault();
+                const form = e.target.closest('.edit-form');
+                const updatedMovie = {
+                    id: parseInt(id),
+                    nome: form.querySelector('[name="nome_filme"]').value,
+                    atores: form.querySelector('[name="atores"]').value,
+                    diretor: form.querySelector('[name="diretor"]').value,
+                    ano: form.querySelector('[name="ano"]').value,
+                    genero: form.querySelector('[name="genero"]').value,
+                    produtora: form.querySelector('[name="produtora"]').value,
+                    sinopse: form.querySelector('[name="sinopse"]').value,
+                };
+                
+                try {
+                    const response = await fetch(`/api/filmes/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updatedMovie)
+                    });
+
+                    if (response.ok) {
+                        fetchMovies();
+                    } else {
+                        alert('Falha ao salvar as alterações.');
+                    }
+                } catch (error) {
+                    console.error('Erro ao salvar:', error);
+                    alert('Ocorreu um erro na requisição.');
+                }
+            }
+            
+            // Ação de Cancelar Edição
+            if (e.target.classList.contains('btn-cancel')) {
+                const displayDiv = card.querySelector('.filme-display');
+                const editForm = card.querySelector('.edit-form');
+                if (displayDiv && editForm) {
+                    displayDiv.style.display = 'block';
+                    editForm.remove();
+                }
+            }
+        });
+
+        function createEditForm(movie) {
+            const form = document.createElement('form');
+            form.className = 'edit-form';
+            form.innerHTML = `
+                <input type="text" name="nome_filme" value="${movie.nome || ''}" placeholder="Nome do Filme">
+                <input type="text" name="atores" value="${movie.atores || ''}" placeholder="Atores">
+                <input type="text" name="diretor" value="${movie.diretor || ''}" placeholder="Diretor">
+                <input type="number" name="ano" value="${movie.ano || ''}" placeholder="Ano">
+                <input type="text" name="genero" value="${movie.genero || ''}" placeholder="Gênero">
+                <input type="text" name="produtora" value="${movie.produtora || ''}" placeholder="Produtora">
+                <textarea name="sinopse" placeholder="Sinopse">${movie.sinopse || ''}</textarea>
+                <div class="filme-actions">
+                    <button type="submit" class="btn-save">Salvar</button>
+                    <button type="button" class="btn-cancel">Cancelar</button>
+                </div>
+            `;
+            return form;
+        }
+    </script>
+
 </body>
 </html>

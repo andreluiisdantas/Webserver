@@ -1,105 +1,88 @@
 import os
+import json
+import time
 from http.server import SimpleHTTPRequestHandler, HTTPServer
-from urllib.parse import parse_qs
+from urllib.parse import parse_qs, urlparse
 
-# Lista para armazenar os filmes cadastrados em memória
-filmes_cadastrados = []
+# Nome do arquivo para persistir os dados
+DB_FILE = 'filmes.json'
+
+# Função para carregar filmes do arquivo JSON
+def load_movies():
+    if not os.path.exists(DB_FILE):
+        return []
+    try:
+        with open(DB_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except (json.JSONDecodeError, FileNotFoundError):
+        return []
+
+# Função para salvar filmes no arquivo JSON
+def save_movies(movies):
+    with open(DB_FILE, 'w', encoding='utf-8') as f:
+        json.dump(movies, f, indent=4)
 
 class MyHandle(SimpleHTTPRequestHandler):
-    def list_directory(self, path):
-        try:
-            with open(os.path.join(path, 'index.html'), 'r', encoding="utf-8") as f:
-                self.send_response(200)
-                self.send_header("Content-type", "text/html")
-                self.end_headers()
-                self.wfile.write(f.read().encode('utf-8'))
-            return None
-        except FileNotFoundError:
-            pass
-        return super().list_directory(path)
+    # Sobrescreve o método de log para um terminal mais limpo
+    def log_message(self, format, *args):
+        return
 
-    # Lida com requisições GET
+    def _send_json_response(self, data, status_code=200):
+        self.send_response(status_code)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode('utf-8'))
+
     def do_GET(self):
-        if self.path == "/login":
-            try:
-                with open(os.path.join(os.getcwd(), "login.html"), 'r', encoding="utf-8") as login_file:
-                    content = login_file.read()
-                self.send_response(200)
-                self.send_header("Content-type", "text/html")
-                self.end_headers()
-                self.wfile.write(content.encode('utf-8'))
-            except FileNotFoundError:
-                self.send_error(404, "File Not Found")
-
-        elif self.path == "/cadastro":
-            try:
-                with open(os.path.join(os.getcwd(), "cadastro.html"), 'r', encoding="utf-8") as cadastro_file:
-                    content = cadastro_file.read()
-                self.send_response(200)
-                self.send_header("Content-type", "text/html")
-                self.end_headers()
-                self.wfile.write(content.encode('utf-8'))
-            except FileNotFoundError:
-                self.send_error(404, "File Not Found")
-
-        elif self.path == "/listar_filmes":
-            try:
-                with open(os.path.join(os.getcwd(), "listar_filmes.html"), 'r', encoding="utf-8") as f:
-                    content_template = f.read()
-
-                # Monta HTML com os filmes cadastrados
-                filmes_html = ""
-                if not filmes_cadastrados:
-                    filmes_html = "<h2>Nenhum filme cadastrado ainda.</h2>"
-                else:
-                    for filme in filmes_cadastrados:
-                        filmes_html += f"""
-                            <div class='filme-item'>
-                                <h2>{filme.get('nome', 'Não informado')}</h2>
-                                <p><strong>Atores:</strong> {filme.get('atores', 'Não informado')}</p>
-                                <p><strong>Diretor:</strong> {filme.get('diretor', 'Não informado')}</p>
-                                <p><strong>Ano:</strong> {filme.get('ano', 'Não informado')}</p>
-                                <p><strong>Gênero:</strong> {filme.get('genero', 'Não informado')}</p>
-                                <p><strong>Produtora:</strong> {filme.get('produtora', 'Não informado')}</p>
-                                <p><strong>Sinopse:</strong> {filme.get('sinopse', 'Não informado')}</p>
-                            </div>
-                        """
-                
-                final_content = content_template.replace("{{filmes}}", filmes_html)
-
-                self.send_response(200)
-                self.send_header("Content-type", "text/html")
-                self.end_headers()
-                self.wfile.write(final_content.encode('utf-8'))
-            except FileNotFoundError:
-                self.send_error(404, "File Not Found")
+        # Endpoint da API para listar filmes
+        if self.path == '/api/filmes':
+            movies = load_movies()
+            self._send_json_response(movies)
+        
+        # Servir arquivos estáticos (HTML, CSS, etc.)
+        elif self.path in ["/", "/index.html", "/login", "/login.html", "/cadastro", "/cadastro.html", "/listar_filmes", "/listar_filmes.html"]:
+            path_map = {
+                "/": "index.html",
+                "/index.html": "index.html",
+                "/login": "login.html",
+                "/login.html": "login.html",
+                "/cadastro": "cadastro.html",
+                "/cadastro.html": "cadastro.html",
+                "/listar_filmes": "listar_filmes.html",
+                "/listar_filmes.html": "listar_filmes.html"
+            }
+            file_path = path_map.get(self.path)
+            if file_path:
+                try:
+                    with open(os.path.join(os.getcwd(), file_path), 'r', encoding="utf-8") as f:
+                        content = f.read()
+                    self.send_response(200)
+                    self.send_header("Content-type", "text/html")
+                    self.end_headers()
+                    self.wfile.write(content.encode('utf-8'))
+                except FileNotFoundError:
+                    self.send_error(404, "File Not Found")
+            else:
+                super().do_GET()
         else:
             super().do_GET()
-
-    # Função simples para validar login
-    def account_user(self, login, password):
-        loga = "andre@gmail.com"
-        senha = "123456"
-        return login == loga and senha == password
-
+    
     # Lida com requisições POST (login e cadastro de filmes)
     def do_POST(self):
         if self.path == '/send_login':
+            # (Lógica de login permanece a mesma)
             content_length = int(self.headers['Content-Length'])
             body = self.rfile.read(content_length).decode('utf-8')
             form_data = parse_qs(body, keep_blank_values=True)
-
             login = form_data.get('usuario', [""])[0]
             password = form_data.get('senha', [""])[0]
 
-            # Redireciona se login válido
-            if self.account_user(login, password):
+            if login == "andre@gmail.com" and password == "123456":
                 self.send_response(302)
                 self.send_header('Location', '/index.html')
                 self.end_headers()
             else:
-                self.send_response(200)
-                self.send_header("Content-type", "text/html; charset=utf-8")
+                self.send_response(401)
                 self.end_headers()
                 self.wfile.write("Usuário ou senha inválido.".encode("utf-8"))
 
@@ -107,9 +90,19 @@ class MyHandle(SimpleHTTPRequestHandler):
             content_length = int(self.headers['Content-Length'])
             body = self.rfile.read(content_length).decode('utf-8')
             form_data = parse_qs(body, keep_blank_values=True)
+            
+            movies = load_movies()
 
-            # Cria novo filme a partir do formulário
+            # Lógica para gerar o novo ID auto-incrementado
+            if movies:
+                # Encontra o ID máximo existente e adiciona 1
+                new_id = max(movie.get('id', 0) for movie in movies) + 1
+            else:
+                # Se não houver filmes, o primeiro ID é 1
+                new_id = 1
+
             novo_filme = {
+                'id': new_id,
                 'nome': form_data.get('nome_filme', [''])[0],
                 'atores': form_data.get('atores', [''])[0],
                 'diretor': form_data.get('diretor', [''])[0],
@@ -119,27 +112,76 @@ class MyHandle(SimpleHTTPRequestHandler):
                 'sinopse': form_data.get('sinopse', [''])[0],
             }
             
-            # Evita filmes duplicados
-            if novo_filme not in filmes_cadastrados:
-                filmes_cadastrados.append(novo_filme)
-                print(f"Filme '{novo_filme['nome']}' adicionado com sucesso!")
-            else:
-                print(f"Filme '{novo_filme['nome']}' já existe. Não foi adicionado novamente.")
+            movies.append(novo_filme)
+            save_movies(movies)
             
-            print("Lista de filmes atual:", filmes_cadastrados)
-            
-            # Redireciona para listagem
             self.send_response(302)
             self.send_header('Location', '/listar_filmes')
             self.end_headers()
         else:
             super(MyHandle, self).do_POST()
 
-# Inicializa o servidor
+    def do_PUT(self):
+        # Rota para editar um filme: /api/filmes/{id}
+        parsed_path = urlparse(self.path)
+        path_parts = parsed_path.path.strip('/').split('/')
+
+        if len(path_parts) == 3 and path_parts[0] == 'api' and path_parts[1] == 'filmes':
+            try:
+                movie_id = int(path_parts[2])
+                content_length = int(self.headers['Content-Length'])
+                body = self.rfile.read(content_length)
+                updated_data = json.loads(body)
+
+                movies = load_movies()
+                movie_found = False
+                for i, movie in enumerate(movies):
+                    if movie.get('id') == movie_id:
+                        movies[i] = updated_data
+                        movies[i]['id'] = movie_id # Garante que o ID não seja alterado
+                        movie_found = True
+                        break
+                
+                if movie_found:
+                    save_movies(movies)
+                    self._send_json_response(movies[i])
+                else:
+                    self._send_json_response({'error': 'Filme não encontrado'}, 404)
+            except (ValueError, json.JSONDecodeError):
+                self._send_json_response({'error': 'Dados inválidos'}, 400)
+        else:
+            self.send_error(404, "Endpoint não encontrado")
+
+    def do_DELETE(self):
+        # Rota para deletar um filme: /api/filmes/{id}
+        parsed_path = urlparse(self.path)
+        path_parts = parsed_path.path.strip('/').split('/')
+
+        if len(path_parts) == 3 and path_parts[0] == 'api' and path_parts[1] == 'filmes':
+            try:
+                movie_id = int(path_parts[2])
+                movies = load_movies()
+                
+                initial_len = len(movies)
+                movies_updated = [movie for movie in movies if movie.get('id') != movie_id]
+
+                if len(movies_updated) < initial_len:
+                    save_movies(movies_updated)
+                    self.send_response(204) # No Content
+                    self.end_headers()
+                else:
+                    self._send_json_response({'error': 'Filme não encontrado'}, 404)
+            except ValueError:
+                 self._send_json_response({'error': 'ID inválido'}, 400)
+        else:
+            self.send_error(404, "Endpoint não encontrado")
+
 def main():
     server_address = ('', 8000)
     httpd = HTTPServer(server_address, MyHandle)
-    print("Server Running in http://localhost:8000")
+    print("Servidor rodando em http://localhost:8000")
+    # Garante que o arquivo de filmes exista
+    load_movies()
     httpd.serve_forever()
 
 if __name__ == '__main__':
