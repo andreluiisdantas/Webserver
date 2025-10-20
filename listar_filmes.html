@@ -48,7 +48,6 @@
                             <p><strong>Ano:</strong> ${movie.ano || 'Não informado'}</p>
                             <p><strong>Gênero:</strong> ${movie.genero || 'Não informado'}</p>
                             <p><strong>Produtora:</strong> ${movie.produtora || 'Não informado'}</p>
-                            <p class="sinopse"><strong>Sinopse:</strong> ${movie.sinopse || 'Não informado'}</p>
                             <div class="filme-actions">
                                 <button class="btn-edit">Editar</button>
                                 <button class="btn-delete">Deletar</button>
@@ -90,9 +89,17 @@
             if (e.target.classList.contains('btn-edit')) {
                 const displayDiv = card.querySelector('.filme-display');
                 if (displayDiv) {
-                    const moviesResponse = await fetch('/api/filmes');
-                    const movies = await moviesResponse.json();
-                    const movie = movies.find(m => m.id == id);
+                    // Busca a versão mais recente dos dados (embora do JSON, não do DB)
+                    // Para este caso, vamos usar os dados já carregados no card
+                    const movie = {
+                        id: id,
+                        nome: displayDiv.querySelector('h2').textContent,
+                        atores: displayDiv.querySelector('p:nth-of-type(1)').textContent.replace('Atores: ', ''),
+                        diretor: displayDiv.querySelector('p:nth-of-type(2)').textContent.replace('Diretor: ', ''),
+                        ano: displayDiv.querySelector('p:nth-of-type(3)').textContent.replace('Ano: ', ''),
+                        genero: displayDiv.querySelector('p:nth-of-type(4)').textContent.replace('Gênero: ', ''),
+                        produtora: displayDiv.querySelector('p:nth-of-type(5)').textContent.replace('Produtora: ', ''),
+                    };
                     
                     if (movie) {
                         displayDiv.style.display = 'none';
@@ -114,7 +121,7 @@
                     ano: form.querySelector('[name="ano"]').value,
                     genero: form.querySelector('[name="genero"]').value,
                     produtora: form.querySelector('[name="produtora"]').value,
-                    sinopse: form.querySelector('[name="sinopse"]').value,
+                    // A sinopse foi removida, pois não pode ser recuperada para edição
                 };
                 
                 try {
@@ -156,7 +163,6 @@
                 <input type="number" name="ano" value="${movie.ano || ''}" placeholder="Ano">
                 <input type="text" name="genero" value="${movie.genero || ''}" placeholder="Gênero">
                 <input type="text" name="produtora" value="${movie.produtora || ''}" placeholder="Produtora">
-                <textarea name="sinopse" placeholder="Sinopse">${movie.sinopse || ''}</textarea>
                 <div class="filme-actions">
                     <button type="submit" class="btn-save">Salvar</button>
                     <button type="button" class="btn-cancel">Cancelar</button>

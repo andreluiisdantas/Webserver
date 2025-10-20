@@ -1,8 +1,17 @@
 import os
 import json
-import time
+import mysql.connector # Adicionado para conexão com o banco
 from http.server import SimpleHTTPRequestHandler, HTTPServer
 from urllib.parse import parse_qs, urlparse
+
+
+# --- Configuração do Banco de Dados ---
+DB_CONFIG = {
+    'user': 'root',
+    'password': 'root',
+    'host': 'localhost',
+    'database': 'filmes'
+}
 
 # Nome do arquivo para persistir os dados
 DB_FILE = 'filmes.json'
@@ -22,6 +31,15 @@ def save_movies(movies):
     with open(DB_FILE, 'w', encoding='utf-8') as f:
         json.dump(movies, f, indent=4)
 
+# Função para obter conexão com o banco de dados
+def get_db_connection():
+    try:
+        conn = mysql.connector.connect(**DB_CONFIG)
+        return conn
+    except mysql.connector.Error as err:
+        print(f"Erro ao conectar ao DB: {err}")
+        return None
+
 class MyHandle(SimpleHTTPRequestHandler):
     # Sobrescreve o método de log para um terminal mais limpo
     def log_message(self, format, *args):
@@ -31,15 +49,52 @@ class MyHandle(SimpleHTTPRequestHandler):
         self.send_response(status_code)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        self.wfile.write(json.dumps(data).encode('utf-8'))
+        # default=str lida com tipos de dados não serializáveis como TIME do banco
+        self.wfile.write(json.dumps(data, default=str).encode('utf-8'))
 
     def do_GET(self):
-        # Endpoint da API para listar filmes
+        # Endpoint da API para listar filmes (MODIFICADO PARA USAR O BANCO DE DADOS)
         if self.path == '/api/filmes':
-            movies = load_movies()
-            self._send_json_response(movies)
+            conn = get_db_connection()
+            if not conn:
+                self._send_json_response({'error': 'Erro de conexão com o banco de dados'}, 500)
+                return
+            
+            try:
+                cursor = conn.cursor(dictionary=True)
+                # Query complexa que junta várias tabelas para montar o resultado
+                query = """
+                    SELECT 
+                        f.id_filme as id, 
+                        f.titulo as nome, 
+                        f.ano,
+                        GROUP_CONCAT(DISTINCT a.nome, ' ', a.sobrenome SEPARATOR ', ') as atores,
+                        GROUP_CONCAT(DISTINCT d.nome, ' ', d.sobrenome SEPARATOR ', ') as diretor,
+                        GROUP_CONCAT(DISTINCT g.genero SEPARATOR ', ') as genero,
+                        GROUP_CONCAT(DISTINCT p.produtora SEPARATOR ', ') as produtora
+                    FROM filme f
+                    LEFT JOIN filme_ator fa ON f.id_filme = fa.id_filme
+                    LEFT JOIN ator a ON fa.id_ator = a.id_ator
+                    LEFT JOIN filme_diretor fd ON f.id_filme = fd.id_filme
+                    LEFT JOIN diretor d ON fd.id_diretor = d.id_diretor
+                    LEFT JOIN filme_genero fg ON f.id_filme = fg.id_filme
+                    LEFT JOIN genero g ON fg.id_genero = g.id_genero
+                    LEFT JOIN filme_produtora fp ON f.id_filme = fp.id_filme
+                    LEFT JOIN produtora p ON fp.id_produtora = p.id_produtora
+                    GROUP BY f.id_filme;
+                """
+                cursor.execute(query)
+                movies_from_db = cursor.fetchall()
+                self._send_json_response(movies_from_db)
+
+            except mysql.connector.Error as err:
+                self._send_json_response({'error': f'Erro no banco de dados: {err}'}, 500)
+            finally:
+                if conn.is_connected():
+                    cursor.close()
+                    conn.close()
         
-        # Servir arquivos estáticos (HTML, CSS, etc.)
+        # Servir arquivos estáticos (HTML, CSS, etc.) - SEM ALTERAÇÕES
         elif self.path in ["/", "/index.html", "/login", "/login.html", "/cadastro", "/cadastro.html", "/listar_filmes", "/listar_filmes.html"]:
             path_map = {
                 "/": "index.html",
@@ -67,7 +122,7 @@ class MyHandle(SimpleHTTPRequestHandler):
         else:
             super().do_GET()
     
-    # Lida com requisições POST (login e cadastro de filmes)
+    # Lida com requisições POST (login e cadastro de filmes) - SEM ALTERAÇÕES
     def do_POST(self):
         if self.path == '/send_login':
             # (Lógica de login permanece a mesma)
@@ -122,7 +177,7 @@ class MyHandle(SimpleHTTPRequestHandler):
             super(MyHandle, self).do_POST()
 
     def do_PUT(self):
-        # Rota para editar um filme: /api/filmes/{id}
+        # Rota para editar um filme: /api/filmes/{id} - SEM ALTERAÇÕES
         parsed_path = urlparse(self.path)
         path_parts = parsed_path.path.strip('/').split('/')
 
@@ -138,7 +193,7 @@ class MyHandle(SimpleHTTPRequestHandler):
                 for i, movie in enumerate(movies):
                     if movie.get('id') == movie_id:
                         movies[i] = updated_data
-                        movies[i]['id'] = movie_id # Garante que o ID não seja alterado
+                        movies[i]['id'] = movie_id 
                         movie_found = True
                         break
                 
@@ -167,7 +222,7 @@ class MyHandle(SimpleHTTPRequestHandler):
 
                 if len(movies_updated) < initial_len:
                     save_movies(movies_updated)
-                    self.send_response(204) # No Content
+                    self.send_response(204)
                     self.end_headers()
                 else:
                     self._send_json_response({'error': 'Filme não encontrado'}, 404)
@@ -182,6 +237,14 @@ def main():
     print("Servidor rodando em http://localhost:8000")
     # Garante que o arquivo de filmes exista
     load_movies()
+    # Adicionada verificação de conexão com o banco ao iniciar
+    conn = get_db_connection()
+    if conn:
+        print(f"Conexão com o banco de dados '{DB_CONFIG['database']}' estabelecida com sucesso.")
+        conn.close()
+    else:
+        print(f"ERRO: Falha ao conectar ao banco de dados '{DB_CONFIG['database']}'. Verifique as credenciais.")
+
     httpd.serve_forever()
 
 if __name__ == '__main__':
