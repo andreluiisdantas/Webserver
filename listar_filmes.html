@@ -40,6 +40,7 @@
                     const card = document.createElement('div');
                     card.className = 'filme-card';
                     card.setAttribute('data-id', movie.id);
+                    // ATUALIZAÇÃO: Adicionado <p> para Sinopse
                     card.innerHTML = `
                         <div class="filme-display">
                             <h2>${movie.nome || 'Não informado'}</h2>
@@ -48,6 +49,7 @@
                             <p><strong>Ano:</strong> ${movie.ano || 'Não informado'}</p>
                             <p><strong>Gênero:</strong> ${movie.genero || 'Não informado'}</p>
                             <p><strong>Produtora:</strong> ${movie.produtora || 'Não informado'}</p>
+                            <p class="sinopse"><strong>Sinopse:</strong> ${movie.sinopse || 'Não informada'}</p>
                             <div class="filme-actions">
                                 <button class="btn-edit">Editar</button>
                                 <button class="btn-delete">Deletar</button>
@@ -68,15 +70,18 @@
             if (!card) return;
             const id = card.getAttribute('data-id');
 
-            // Ação de Deletar
+            // Ação de Deletar (Ainda usa JSON)
             if (e.target.classList.contains('btn-delete')) {
                 if (confirm('Tem certeza que deseja deletar este filme?')) {
                     try {
                         const response = await fetch(`/api/filmes/${id}`, { method: 'DELETE' });
                         if (response.ok) {
+                            // ATENÇÃO: Esta ação pode não funcionar como esperado
+                            // pois o GET lê do DB e o DELETE escreve no JSON.
+                            alert("Filme deletado do JSON. Recarregando lista do DB.");
                             fetchMovies(); // Recarrega a lista
                         } else {
-                            alert('Falha ao deletar o filme.');
+                            alert('Falha ao deletar o filme (do JSON).');
                         }
                     } catch (error) {
                         console.error('Erro ao deletar:', error);
@@ -85,7 +90,7 @@
                 }
             }
             
-            // Ação de Editar
+            // Ação de Editar (Ainda usa JSON)
             if (e.target.classList.contains('btn-edit')) {
                 const displayDiv = card.querySelector('.filme-display');
                 if (displayDiv) {
@@ -99,6 +104,7 @@
                         ano: displayDiv.querySelector('p:nth-of-type(3)').textContent.replace('Ano: ', ''),
                         genero: displayDiv.querySelector('p:nth-of-type(4)').textContent.replace('Gênero: ', ''),
                         produtora: displayDiv.querySelector('p:nth-of-type(5)').textContent.replace('Produtora: ', ''),
+                        // Sinopse não é adicionada ao formulário de edição aqui
                     };
                     
                     if (movie) {
@@ -109,7 +115,7 @@
                 }
             }
 
-            // Ação de Salvar Edição
+            // Ação de Salvar Edição (Ainda usa JSON)
             if (e.target.classList.contains('btn-save')) {
                 e.preventDefault();
                 const form = e.target.closest('.edit-form');
@@ -132,9 +138,12 @@
                     });
 
                     if (response.ok) {
+                        // ATENÇÃO: Esta ação pode não funcionar como esperado
+                        // pois o GET lê do DB e o PUT escreve no JSON.
+                        alert("Filme salvo no JSON. Recarregando lista do DB.");
                         fetchMovies();
                     } else {
-                        alert('Falha ao salvar as alterações.');
+                        alert('Falha ao salvar as alterações (no JSON).');
                     }
                 } catch (error) {
                     console.error('Erro ao salvar:', error);
@@ -153,6 +162,7 @@
             }
         });
 
+        // Formulário de edição (NÃO INCLUI SINOPSE AINDA)
         function createEditForm(movie) {
             const form = document.createElement('form');
             form.className = 'edit-form';

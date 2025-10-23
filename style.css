@@ -383,3 +383,81 @@ body{
     resize: vertical;
     min-height: 100px;
 }
+
+.telaSucesso {
+    background: #0077B6;
+    background: linear-gradient(135deg,rgba(0, 119, 182, 1) 0%, rgba(0, 180, 216, 1) 50%, rgba(199, 249, 204, 1) 100%);
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+.telaSucesso .logo{
+    width: 14rem;
+    position: absolute;
+    top: 15px;
+    left: 15px;
+}
+
+.cardSucesso {
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 15px;
+    padding: 2.5rem;
+    box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
+    max-width: 800px;
+    width: 100%;
+}
+
+.cardSucesso h1 {
+    color: #4cae4c; /* Verde sucesso */
+    font-size: 3rem;
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+#dados-filme {
+    background-color: rgba(255, 255, 255, 0.7);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+#dados-filme h2 {
+    color: rgba(0, 119, 182, 1);
+    margin-bottom: 1rem;
+    font-size: 2rem;
+}
+
+#dados-filme p {
+    font-size: 1.1rem;
+    line-height: 1.5;
+    margin-bottom: 0.5rem;
+    color: #333;
+}
+
+#dados-filme p.sinopse {
+    margin-top: 1rem;
+    font-style: italic;
+}
+
+.sucesso-actions {
+    display: flex;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-top: 1rem;
+}
+
+.sucesso-actions .nav-button {
+     font-size: 1.2rem;
+}
+
+.btn-secondary {
+    background-color: #777;
+}
+.btn-secondary:hover {
+    background-color: #666;
+}

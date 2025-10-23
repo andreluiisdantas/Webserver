@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sucesso!</title>
+    <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+    <div class="telaSucesso">
+        <article class="cardSucesso">
+            <h1>Filme Cadastrado com Sucesso!</h1>
+            
+            <div id="dados-filme">
+                </div>
+
+            <div class="sucesso-actions">
+                <a href="/listar_filmes.html" class="nav-button">Ver Lista de Filmes</a>
+                <a href="/cadastro.html" class="nav-button btn-secondary">Cadastrar Outro</a>
+            </div>
+        </article>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const container = document.getElementById('dados-filme');
+            const params = new URLSearchParams(window.location.search);
+
+            // Pega os dados da URL e cria o HTML
+            const nome = params.get('nome_filme') || 'Não informado';
+            const atores = params.get('atores') || 'Não informado';
+            const diretor = params.get('diretor') || 'Não informado';
+            const ano = params.get('ano') || 'Não informado';
+            const genero = params.get('genero') || 'Não informado';
+            const produtora = params.get('produtora') || 'Não informado';
+            const sinopse = params.get('sinopse') || 'Não informado';
+
+            container.innerHTML = `
+                <h2>${nome} (${ano})</h2>
+                <p><strong>Atores:</strong> ${atores}</p>
+                <p><strong>Diretor:</strong> ${diretor}</p>
+                <p><strong>Gênero:</strong> ${genero}</p>
+                <p><strong>Produtora:</strong> ${produtora}</p>
+                <p class="sinopse"><strong>Sinopse:</strong> ${sinopse}</p>
+            `;
+        });
+    </script>
+</body>
+</html>

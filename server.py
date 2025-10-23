@@ -1,11 +1,10 @@
 import os
 import json
-import mysql.connector # Adicionado para conexão com o banco
+import mysql.connector
 from http.server import SimpleHTTPRequestHandler, HTTPServer
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import parse_qs, urlparse, urlencode
 
 
-# --- Configuração do Banco de Dados ---
 DB_CONFIG = {
     'user': 'root',
     'password': 'root',
@@ -13,10 +12,9 @@ DB_CONFIG = {
     'database': 'filmes'
 }
 
-# Nome do arquivo para persistir os dados
 DB_FILE = 'filmes.json'
 
-# Função para carregar filmes do arquivo JSON
+# Funções auxiliares para carregar e salvar filmes localmente em JSON
 def load_movies():
     if not os.path.exists(DB_FILE):
         return []
@@ -26,12 +24,11 @@ def load_movies():
     except (json.JSONDecodeError, FileNotFoundError):
         return []
 
-# Função para salvar filmes no arquivo JSON
 def save_movies(movies):
     with open(DB_FILE, 'w', encoding='utf-8') as f:
         json.dump(movies, f, indent=4)
 
-# Função para obter conexão com o banco de dados
+# Conexão com o banco de dados MySQL
 def get_db_connection():
     try:
         conn = mysql.connector.connect(**DB_CONFIG)
@@ -40,20 +37,27 @@ def get_db_connection():
         print(f"Erro ao conectar ao DB: {err}")
         return None
 
+# Classe principal que lida com as rotas e requisições HTTP
 class MyHandle(SimpleHTTPRequestHandler):
-    # Sobrescreve o método de log para um terminal mais limpo
     def log_message(self, format, *args):
         return
 
+    # Envia resposta JSON
     def _send_json_response(self, data, status_code=200):
         self.send_response(status_code)
         self.send_header("Content-type", "application/json")
         self.end_headers()
-        # default=str lida com tipos de dados não serializáveis como TIME do banco
         self.wfile.write(json.dumps(data, default=str).encode('utf-8'))
 
+    # Envia resposta de erro em texto simples
+    def _send_error_response(self, message, status_code):
+        self.send_response(status_code)
+        self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(message.encode('utf-8'))
+
+    # Rota GET para listar filmes ou servir páginas HTML
     def do_GET(self):
-        # Endpoint da API para listar filmes (MODIFICADO PARA USAR O BANCO DE DADOS)
         if self.path == '/api/filmes':
             conn = get_db_connection()
             if not conn:
@@ -62,12 +66,12 @@ class MyHandle(SimpleHTTPRequestHandler):
             
             try:
                 cursor = conn.cursor(dictionary=True)
-                # Query complexa que junta várias tabelas para montar o resultado
                 query = """
                     SELECT 
                         f.id_filme as id, 
                         f.titulo as nome, 
                         f.ano,
+                        f.sinopse, 
                         GROUP_CONCAT(DISTINCT a.nome, ' ', a.sobrenome SEPARATOR ', ') as atores,
                         GROUP_CONCAT(DISTINCT d.nome, ' ', d.sobrenome SEPARATOR ', ') as diretor,
                         GROUP_CONCAT(DISTINCT g.genero SEPARATOR ', ') as genero,
@@ -94,8 +98,10 @@ class MyHandle(SimpleHTTPRequestHandler):
                     cursor.close()
                     conn.close()
         
-        # Servir arquivos estáticos (HTML, CSS, etc.) - SEM ALTERAÇÕES
-        elif self.path in ["/", "/index.html", "/login", "/login.html", "/cadastro", "/cadastro.html", "/listar_filmes", "/listar_filmes.html"]:
+        # Mapeia e serve arquivos HTML conforme a rota acessada
+        elif self.path in ["/", "/index.html", "/login", "/login.html", 
+                           "/cadastro", "/cadastro.html", "/listar_filmes", 
+                           "/listar_filmes.html", "/sucesso", "/sucesso.html"]:
             path_map = {
                 "/": "index.html",
                 "/index.html": "index.html",
@@ -104,9 +110,11 @@ class MyHandle(SimpleHTTPRequestHandler):
                 "/cadastro": "cadastro.html",
                 "/cadastro.html": "cadastro.html",
                 "/listar_filmes": "listar_filmes.html",
-                "/listar_filmes.html": "listar_filmes.html"
+                "/listar_filmes.html": "listar_filmes.html",
+                "/sucesso": "sucesso.html",
+                "/sucesso.html": "sucesso.html"
             }
-            file_path = path_map.get(self.path)
+            file_path = path_map.get(self.path.split('?')[0])
             if file_path:
                 try:
                     with open(os.path.join(os.getcwd(), file_path), 'r', encoding="utf-8") as f:
@@ -122,10 +130,9 @@ class MyHandle(SimpleHTTPRequestHandler):
         else:
             super().do_GET()
     
-    # Lida com requisições POST (login e cadastro de filmes) - SEM ALTERAÇÕES
+    # Rota POST para login e cadastro de filmes
     def do_POST(self):
         if self.path == '/send_login':
-            # (Lógica de login permanece a mesma)
             content_length = int(self.headers['Content-Length'])
             body = self.rfile.read(content_length).decode('utf-8')
             form_data = parse_qs(body, keep_blank_values=True)
@@ -141,43 +148,123 @@ class MyHandle(SimpleHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write("Usuário ou senha inválido.".encode("utf-8"))
 
+        # Cadastro de novo filme com inserções em várias tabelas relacionadas
         elif self.path == '/send_cadastro':
             content_length = int(self.headers['Content-Length'])
             body = self.rfile.read(content_length).decode('utf-8')
             form_data = parse_qs(body, keep_blank_values=True)
             
-            movies = load_movies()
+            nome_filme = form_data.get('nome_filme', [''])[0]
+            ano_str = form_data.get('ano', [''])[0]
+            atores_str = form_data.get('atores', [''])[0]
+            diretor_str = form_data.get('diretor', [''])[0]
+            genero_str = form_data.get('genero', [''])[0]
+            produtora_str = form_data.get('produtora', [''])[0]
+            sinopse = form_data.get('sinopse', [''])[0]
 
-            # Lógica para gerar o novo ID auto-incrementado
-            if movies:
-                # Encontra o ID máximo existente e adiciona 1
-                new_id = max(movie.get('id', 0) for movie in movies) + 1
-            else:
-                # Se não houver filmes, o primeiro ID é 1
-                new_id = 1
+            if not nome_filme or not ano_str:
+                self._send_error_response("Nome do filme e Ano são obrigatórios.", 400)
+                return
+            try:
+                ano = int(ano_str)
+            except ValueError:
+                self._send_error_response("O ano deve ser um número.", 400)
+                return
+            
+            orcamento_default = 0.00
+            tempo_duracao_default = '00:00:00'
 
-            novo_filme = {
-                'id': new_id,
-                'nome': form_data.get('nome_filme', [''])[0],
-                'atores': form_data.get('atores', [''])[0],
-                'diretor': form_data.get('diretor', [''])[0],
-                'ano': form_data.get('ano', [''])[0],
-                'genero': form_data.get('genero', [''])[0],
-                'produtora': form_data.get('produtora', [''])[0],
-                'sinopse': form_data.get('sinopse', [''])[0],
-            }
+            conn = get_db_connection()
+            if not conn:
+                self._send_error_response("Erro de conexão com o banco de dados.", 500)
+                return
             
-            movies.append(novo_filme)
-            save_movies(movies)
-            
-            self.send_response(302)
-            self.send_header('Location', '/listar_filmes')
-            self.end_headers()
+            cursor = conn.cursor(dictionary=True)
+
+            try:
+                conn.start_transaction()
+                cursor.execute("SELECT id_filme FROM filme WHERE titulo = %s AND ano = %s", (nome_filme, ano))
+                if cursor.fetchone():
+                    self._send_error_response("Este filme já está cadastrado.", 409) 
+                    conn.rollback()
+                    return
+
+                query_filme = """
+                    INSERT INTO filme (titulo, orcamento, tempo_duracao, ano, sinopse) 
+                    VALUES (%s, %s, %s, %s, %s)
+                """
+                cursor.execute(query_filme, (nome_filme, orcamento_default, tempo_duracao_default, ano, sinopse))
+                new_movie_id = cursor.lastrowid
+
+                # Inserção e associação de gêneros, produtoras, atores e diretores
+                if genero_str:
+                    for g in [g.strip() for g in genero_str.split(',') if g.strip()]:
+                        cursor.execute("INSERT IGNORE INTO genero (genero) VALUES (%s)", (g,))
+                        cursor.execute("SELECT id_genero FROM genero WHERE genero = %s", (g,))
+                        id_genero = cursor.fetchone()['id_genero']
+                        cursor.execute("INSERT INTO filme_genero (id_filme, id_genero) VALUES (%s, %s)", (new_movie_id, id_genero))
+
+                if produtora_str:
+                    for p in [p.strip() for p in produtora_str.split(',') if p.strip()]:
+                        cursor.execute("INSERT IGNORE INTO produtora (produtora) VALUES (%s)", (p,))
+                        cursor.execute("SELECT id_produtora FROM produtora WHERE produtora = %s", (p,))
+                        id_produtora = cursor.fetchone()['id_produtora']
+                        cursor.execute("INSERT INTO filme_produtora (id_filme, id_produtora) VALUES (%s, %s)", (new_movie_id, id_produtora))
+                
+                if atores_str:
+                    for a_full in [a.strip() for a in atores_str.split(',') if a.strip()]:
+                        parts = a_full.split(' ', 1)
+                        a_nome = parts[0]
+                        a_sobrenome = parts[1] if len(parts) > 1 else ''
+                        
+                        cursor.execute("SELECT id_ator FROM ator WHERE nome = %s AND sobrenome = %s", (a_nome, a_sobrenome))
+                        result = cursor.fetchone()
+                        if result:
+                            id_ator = result['id_ator']
+                        else:
+                            cursor.execute("INSERT INTO ator (nome, sobrenome, genero) VALUES (%s, %s, %s)", (a_nome, a_sobrenome, 'Outro'))
+                            id_ator = cursor.lastrowid
+                        cursor.execute("INSERT INTO filme_ator (id_filme, id_ator) VALUES (%s, %s)", (new_movie_id, id_ator))
+
+                if diretor_str:
+                    for d_full in [d.strip() for d in diretor_str.split(',') if d.strip()]:
+                        parts = d_full.split(' ', 1)
+                        d_nome = parts[0]
+                        d_sobrenome = parts[1] if len(parts) > 1 else ''
+                        
+                        cursor.execute("SELECT id_diretor FROM diretor WHERE nome = %s AND sobrenome = %s", (d_nome, d_sobrenome))
+                        result = cursor.fetchone()
+                        if result:
+                            id_diretor = result['id_diretor']
+                        else:
+                            cursor.execute("INSERT INTO diretor (nome, sobrenome, genero) VALUES (%s, %s, %s)", (d_nome, d_sobrenome, 'Outro'))
+                            id_diretor = cursor.lastrowid
+                        cursor.execute("INSERT INTO filme_diretor (id_filme, id_diretor) VALUES (%s, %s)", (new_movie_id, id_diretor))
+
+                conn.commit()
+                
+                params = urlencode(form_data, doseq=True)
+                self.send_response(302)
+                self.send_header('Location', f'/sucesso.html?{params}')
+                self.end_headers()
+
+            except mysql.connector.Error as err:
+                conn.rollback() 
+                print(f"Erro no DB: {err}")
+                self._send_error_response(f"Erro no banco de dados: {err}", 500)
+            except Exception as e:
+                conn.rollback() 
+                print(f"Erro inesperado: {e}")
+                self._send_error_response(f"Erro interno do servidor: {e}", 500)
+            finally:
+                if conn.is_connected():
+                    cursor.close()
+                    conn.close()
         else:
             super(MyHandle, self).do_POST()
 
+    # Atualiza filme em JSON local
     def do_PUT(self):
-        # Rota para editar um filme: /api/filmes/{id} - SEM ALTERAÇÕES
         parsed_path = urlparse(self.path)
         path_parts = parsed_path.path.strip('/').split('/')
 
@@ -207,8 +294,8 @@ class MyHandle(SimpleHTTPRequestHandler):
         else:
             self.send_error(404, "Endpoint não encontrado")
 
+    # Deleta filme do arquivo JSON local
     def do_DELETE(self):
-        # Rota para deletar um filme: /api/filmes/{id}
         parsed_path = urlparse(self.path)
         path_parts = parsed_path.path.strip('/').split('/')
 
@@ -231,13 +318,12 @@ class MyHandle(SimpleHTTPRequestHandler):
         else:
             self.send_error(404, "Endpoint não encontrado")
 
+# Função principal que inicia o servidor e verifica a conexão com o banco
 def main():
     server_address = ('', 8000)
     httpd = HTTPServer(server_address, MyHandle)
     print("Servidor rodando em http://localhost:8000")
-    # Garante que o arquivo de filmes exista
     load_movies()
-    # Adicionada verificação de conexão com o banco ao iniciar
     conn = get_db_connection()
     if conn:
         print(f"Conexão com o banco de dados '{DB_CONFIG['database']}' estabelecida com sucesso.")
